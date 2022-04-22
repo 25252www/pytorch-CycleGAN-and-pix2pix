@@ -1,4 +1,7 @@
 import os
+import cv2
+import numpy as np
+import torch
 from data.base_dataset import BaseDataset, get_params, get_transform
 from data.image_folder import make_dataset
 from PIL import Image
@@ -21,6 +24,7 @@ class AlignedDataset(BaseDataset):
         self.dir_AB = os.path.join(opt.dataroot, opt.phase)  # get the image directory
         self.AB_paths = sorted(make_dataset(self.dir_AB, opt.max_dataset_size))  # get image paths
         assert(self.opt.load_size >= self.opt.crop_size)   # crop_size should be smaller than the size of loaded image
+        # input_nc (int)  -- the number of channels in input images
         self.input_nc = self.opt.output_nc if self.opt.direction == 'BtoA' else self.opt.input_nc
         self.output_nc = self.opt.input_nc if self.opt.direction == 'BtoA' else self.opt.output_nc
 
@@ -38,20 +42,25 @@ class AlignedDataset(BaseDataset):
         """
         # read a image given a random integer index
         AB_path = self.AB_paths[index]
-        AB = Image.open(AB_path).convert('RGB')
+        AB = cv2.imread(AB_path,-1)  # IMREAD_UNCHANGED = -1#不进行转化，比如保存为了32位的图片，读取出来仍然为32位。
         # split AB image into A and B
-        w, h = AB.size
+        w = np.shape(AB)[1]
         w2 = int(w / 2)
-        A = AB.crop((0, 0, w2, h))
-        B = AB.crop((w2, 0, w, h))
+        A = AB[:,:w2,:]
+        B = AB[:,w2:,:]
+        # (900,900,3)(height,weight,channel)->(3,900,900)(channel,height,weight)
+        A = np.swapaxes(A,0,2)
+        A = np.swapaxes(A,1,2)
+        B = np.swapaxes(B,0,2)
+        B = np.swapaxes(B,1,2)
 
         # apply the same transform to both A and B
-        transform_params = get_params(self.opt, A.size)
+        transform_params = get_params(self.opt, (np.shape(A)[1],np.shape(A)[0]))
         A_transform = get_transform(self.opt, transform_params, grayscale=(self.input_nc == 1))
         B_transform = get_transform(self.opt, transform_params, grayscale=(self.output_nc == 1))
 
-        A = A_transform(A)
-        B = B_transform(B)
+        A = A_transform(torch.from_numpy(A))
+        B = B_transform(torch.from_numpy(B))
 
         return {'A': A, 'B': B, 'A_paths': AB_path, 'B_paths': AB_path}
 

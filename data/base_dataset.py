@@ -79,7 +79,8 @@ def get_params(opt, size):
 
 
 def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, convert=True):
-    transform_list = []
+    transform_list = [transforms.ToPILImage()]
+    # transform_list = []
     if grayscale:
         transform_list.append(transforms.Grayscale(1))
     if 'resize' in opt.preprocess:
