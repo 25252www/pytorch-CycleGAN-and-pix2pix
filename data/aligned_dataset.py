@@ -40,6 +40,7 @@ class AlignedDataset(BaseDataset):
             A_paths (str) - - image paths
             B_paths (str) - - image paths (same as A_paths)
         """
+        # gdal读AB中的fiff,分割成AB
         # read a image given a random integer index
         AB_path = self.AB_paths[index]
         AB = cv2.imread(AB_path,-1)  # IMREAD_UNCHANGED = -1#不进行转化，比如保存为了32位的图片，读取出来仍然为32位。
